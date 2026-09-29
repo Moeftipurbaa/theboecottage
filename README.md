@@ -56,3 +56,56 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+# 🏡 The Boe Cottage - Modern Web Platform
+
+Platform web modern untuk **The Boe Cottage** yang dibangun menggunakan **Laravel 11**, **React.js (Inertia.js)**, dan **Tailwind CSS**.
+
+---
+
+## 🛠️ System Prerequisites & Tools
+
+Sebelum menjalankan project, pastikan environment dan tools berikut sudah terpasang di komputer kamu:
+
+* **PHP**: `>= 8.2`
+* **Composer**: `>= 2.x`
+* **Node.js**: `>= 18.x` (LTS diprioritaskan)
+* **npm**: `>= 9.x`
+* **Git**: Versi terbaru
+
+---
+
+## 📦 Core Dependencies
+
+### Backend Dependencies (Composer)
+* **PHP Engine**: `^8.2`
+* **Laravel Framework**: `^11.0`
+* **Inertia.js Laravel Adapter**: `inertiajs/inertia-laravel`
+* **iCal Parser Engine**: `sabre/vobject`
+
+### Frontend Dependencies (npm)
+* **React**: `^18.x`
+* **Inertia.js React Adapter**: `@inertiajs/react`
+* **Tailwind CSS**: `^3.x`
+* **Vite**: `^5.x` (Build tool & HMR)
+
+---
+
+## 🚀 Local Development Setup
+
+### 1. Installation
+```bash
+# Clone repository
+git clone <URL_REPOSITORY_GITHUB>
+cd theboecottage
+
+# Install PHP dependencies
+composer install
+
+# Install JavaScript dependencies
+npm install
+
+# Environment setup
+cp .env.example .env
+php artisan key:generate
