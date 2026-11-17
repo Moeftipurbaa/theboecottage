@@ -48,6 +48,20 @@ class HandleInertiaRequests extends Middleware
                 'client_key' => config('services.midtrans.client_key'),
                 'is_production' => (bool) config('services.midtrans.is_production', false),
             ],
+            'site' => [
+                'social' => config('boe.social'),
+                'ota' => config('boe.ota'),
+                'maps' => config('boe.maps'),
+                'ical_test_panel' => self::icalTestPanelEnabled(),
+            ],
         ];
+    }
+
+    /**
+     * The localhost iCal test panel is only available in the local environment.
+     */
+    public static function icalTestPanelEnabled(): bool
+    {
+        return app()->environment(['local', 'testing']) && (bool) config('boe.ical_test_panel', true);
     }
 }

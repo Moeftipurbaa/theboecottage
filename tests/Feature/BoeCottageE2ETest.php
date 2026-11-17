@@ -549,5 +549,162 @@ class BoeCottageE2ETest extends TestCase
 
         $this->assertDatabaseHas('bookings', ['booking_code' => $code, 'status' => 'cancelled']);
     }
+
+    // ------------------------------------------------------------------
+    // 9. Phase 5: BCA Checkout Timer, Auto-Receipt, Admin Full CRUD & Quick Sync
+    // ------------------------------------------------------------------
+
+    public function test_booking_sets_bca_payment_method_and_30_minute_payment_timer(): void
+    {
+        $room = $this->daisy();
+
+        $response = $this->postJson('/api/bookings', $this->bookingPayload($room, 95, 97))
+            ->assertCreated();
+
+        $code = $response->json('booking.booking_code');
+        $booking = Booking::where('booking_code', $code)->firstOrFail();
+
+        $this->assertSame('bca_transfer', $booking->payment_method);
+        $this->assertNotNull($booking->payment_expires_at);
+        $this->assertTrue(
+            $booking->payment_expires_at->between(now()->addMinutes(28), now()->addMinutes(31)),
+            'payment_expires_at should be ~30 minutes in the future'
+        );
+
+        $this->getJson("/api/bookings/{$code}/status")
+            ->assertOk()
+            ->assertJsonPath('is_paid', false)
+            ->assertJsonPath('is_expired', false);
+    }
+
+    public function test_simulated_bca_transfer_confirms_booking_and_generates_receipt_number(): void
+    {
+        $room = $this->daisy();
+        $code = $this->postJson('/api/bookings', $this->bookingPayload($room, 100, 102))
+            ->assertCreated()
+            ->json('booking.booking_code');
+
+        $response = $this->postJson("/api/bookings/{$code}/simulate-pay")
+            ->assertOk()
+            ->assertJsonPath('is_paid', true)
+            ->assertJsonPath('booking.status', 'confirmed')
+            ->assertJsonPath('booking.payment_status', 'paid');
+
+        $receiptNo = $response->json('booking.receipt_number');
+        $this->assertMatchesRegularExpression('/^INV-BOE-\d{8}-[A-Z0-9]{4}$/', $receiptNo);
+
+        $booking = Booking::where('booking_code', $code)->firstOrFail();
+        $this->assertSame('confirmed', $booking->status);
+        $this->assertSame('paid', $booking->payment_status);
+        $this->assertSame($receiptNo, $booking->receipt_number);
+        $this->assertNotNull($booking->paid_at);
+    }
+
+    public function test_overdue_unpaid_booking_is_auto_cancelled_and_releases_room_dates(): void
+    {
+        $room = $this->daisy();
+        $code = $this->postJson('/api/bookings', $this->bookingPayload($room, 105, 107))
+            ->assertCreated()
+            ->json('booking.booking_code');
+
+        // Move payment_expires_at into the past
+        Booking::where('booking_code', $code)->update([
+            'payment_expires_at' => now()->subMinute(),
+        ]);
+
+        // Admin expire-overdue endpoint transitions it to cancelled / expired
+        $this->actingAs($this->admin())
+            ->postJson('/admin/bookings/expire-overdue')
+            ->assertOk()
+            ->assertJsonPath('expired_count', 1);
+
+        $this->assertDatabaseHas('bookings', [
+            'booking_code' => $code,
+            'status' => 'cancelled',
+            'payment_status' => 'expired',
+        ]);
+
+        // Room dates are immediately released so another guest can book the exact same dates
+        $this->postJson('/api/bookings', $this->bookingPayload($room, 105, 107))
+            ->assertCreated();
+    }
+
+    public function test_admin_can_full_edit_reschedule_and_delete_reservation(): void
+    {
+        $daisy = $this->daisy();
+        $lily = $this->lily();
+        $admin = $this->admin();
+
+        $createRes = $this->postJson('/api/bookings', $this->bookingPayload($daisy, 110, 112))
+            ->assertCreated();
+        $bookingId = $createRes->json('booking.id');
+
+        // Create another booking on Lily Room (days 120-122) to test overlap protection during reschedule
+        $this->postJson('/api/bookings', $this->bookingPayload($lily, 120, 122))->assertCreated();
+
+        // Rescheduling into conflicting Lily Room dates (120-122) is rejected
+        $this->actingAs($admin)
+            ->putJson("/admin/bookings/{$bookingId}", [
+                'room_id' => $lily->id,
+                'guest_name' => 'Updated Guest Name',
+                'guest_email' => 'updated@example.com',
+                'guest_phone' => '+62 812-9999-8888',
+                'check_in' => now()->addDays(120)->toDateString(),
+                'check_out' => now()->addDays(122)->toDateString(),
+                'guests_count' => 4,
+                'status' => 'confirmed',
+                'payment_status' => 'paid',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['check_in']);
+
+        // Rescheduling to non-conflicting Lily Room dates (115-118, 3 nights) succeeds & recalculates price
+        $expectedLilyTotal = (3 * 3300000) + self::SERVICE_FEE;
+        $updateRes = $this->actingAs($admin)
+            ->putJson("/admin/bookings/{$bookingId}", [
+                'room_id' => $lily->id,
+                'guest_name' => 'Updated Guest Name',
+                'guest_email' => 'updated@example.com',
+                'guest_phone' => '+62 812-9999-8888',
+                'check_in' => now()->addDays(115)->toDateString(),
+                'check_out' => now()->addDays(118)->toDateString(),
+                'guests_count' => 4,
+                'status' => 'checked_in',
+                'payment_status' => 'paid',
+                'notes' => 'Rescheduled to Lily Room.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('booking.guest_name', 'Updated Guest Name')
+            ->assertJsonPath('booking.room_id', $lily->id)
+            ->assertJsonPath('booking.status', 'confirmed')
+            ->assertJsonPath('booking.check_in_status', 'checked_in')
+            ->assertJsonPath('booking.payment_status', 'paid');
+
+        $this->assertEquals($expectedLilyTotal, (float) $updateRes->json('booking.total_price'));
+        $this->assertMatchesRegularExpression('/^INV-BOE-\d{8}-[A-Z0-9]{4}$/', $updateRes->json('booking.receipt_number'));
+
+        // Permanently delete the booking
+        $this->actingAs($admin)
+            ->deleteJson("/admin/bookings/{$bookingId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('bookings', ['id' => $bookingId]);
+    }
+
+    public function test_localhost_ical_status_and_quick_sync_endpoints_return_valid_feeds(): void
+    {
+        $this->getJson('/api/ical/status')
+            ->assertOk()
+            ->assertJsonCount(2, 'export_feeds')
+            ->assertJsonPath('export_feeds.0.slug', 'daisy-room')
+            ->assertJsonPath('export_feeds.1.slug', 'lily-room');
+
+        $this->postJson('/api/ical/quick-sync')
+            ->assertOk()
+            ->assertJsonStructure([
+                'summary' => ['imported', 'updated', 'cancelled', 'errors'],
+                'export_feeds',
+            ]);
+    }
 }
 

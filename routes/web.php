@@ -42,6 +42,7 @@ Route::get('/ical/export/{room:slug}.ics', [IcalController::class, 'export'])
 
 Route::middleware('auth')->group(function () {
     Route::get('/admin-dashboard', function () {
+        Booking::expireOverduePending();
         $today = now()->toDateString();
         $rooms = Room::with([
             'images',
@@ -110,6 +111,8 @@ Route::middleware('auth')->group(function () {
     })->name('admin.dashboard');
 
     Route::get('/central-bookings', function () {
+        Booking::expireOverduePending();
+
         return Inertia::render('Admin/CentralBookings', [
             'bookings' => Booking::with('room')->latest()->get(),
             'rooms' => Room::with('images')->orderBy('id')->get(),
@@ -121,7 +124,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/admin/rooms/{room}/status', [RoomController::class, 'updateStatus']);
     Route::post('/admin/seasonal-rates', [RoomController::class, 'storeSeasonalRate']);
     Route::post('/admin/bookings', [BookingController::class, 'storeManual']);
+    Route::post('/admin/bookings/expire-overdue', [BookingController::class, 'expireOverdue']);
+    Route::put('/admin/bookings/{booking}', [BookingController::class, 'update']);
     Route::patch('/admin/bookings/{booking}', [BookingController::class, 'updateStatus']);
+    Route::delete('/admin/bookings/{booking}', [BookingController::class, 'destroy']);
 
     // Admin OTA iCal Channel Endpoints
     Route::post('/admin/ical-links', [IcalController::class, 'store']);

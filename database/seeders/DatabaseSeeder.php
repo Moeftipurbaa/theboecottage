@@ -37,10 +37,10 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Daisy Room',
                 'description' => 'Daisy Room offers a spacious and comfortable stay with thoughtfully designed spaces and complete facilities. Perfect for families, friends, or groups looking for a relaxing and memorable stay in Dieng.',
                 'price_per_night' => 3000000,
-                'capacity' => 2,
+                'capacity' => 6,
                 'status' => 'AVAILABLE',
                 'size' => '96 sq. meters',
-                'amenities' => ['Smart TV', 'Free WIFI', '1 Bathtub Pribadi'],
+                'amenities' => ['Smart TV', 'Free WIFI', '1 Private Bathtub'],
             ]
         );
 
@@ -60,10 +60,10 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Lily Room',
                 'description' => 'Designed to bring people together, Lily Room offers a warm and inviting atmosphere with ample space to relax and recharge. Whether you are traveling with close friends or family, it serves as a cozy retreat after exploring Dieng—providing the perfect comfort for medium-sized groups.',
                 'price_per_night' => 3300000,
-                'capacity' => 2,
+                'capacity' => 6,
                 'status' => 'AVAILABLE',
                 'size' => '96 sq. meters',
-                'amenities' => ['Smart TV', 'Free WIFI', '1 Bathtub Pribadi'],
+                'amenities' => ['Smart TV', 'Free WIFI', '1 Private Bathtub'],
             ]
         );
 

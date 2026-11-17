@@ -8,11 +8,25 @@ use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    // Mengambil daftar tanggal yang sudah ter-booking untuk 1 kamar
+    /**
+     * Fetch all blocked/booked dates for a specific room, automatically releasing
+     * any pending bookings whose 30-minute payment timer has expired.
+     */
     public function getBookedDates(Room $room)
     {
+        Booking::expireOverduePending();
+
         $bookedDates = Booking::where('room_id', $room->id)
-            ->whereIn('status', ['confirmed', 'pending'])
+            ->where(function ($query) {
+                $query->where('status', 'confirmed')
+                    ->orWhere(function ($q) {
+                        $q->where('status', 'pending')
+                            ->where(function ($exp) {
+                                $exp->whereNull('payment_expires_at')
+                                    ->orWhere('payment_expires_at', '>', now());
+                            });
+                    });
+            })
             ->get(['check_in', 'check_out'])
             ->flatMap(function ($booking) {
                 $checkIn = $booking->check_in instanceof \DateTimeInterface
@@ -44,9 +58,13 @@ class AvailabilityController extends Controller
         ]);
     }
 
-    // Validasi apakah range tanggal yang dipilih tamu valid (tidak bentrok)
+    /**
+     * Validate whether the selected date range is available (non-overlapping).
+     */
     public function checkOverlap(Request $request)
     {
+        Booking::expireOverduePending();
+
         $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'check_in' => 'required|date|after_or_equal:today',
@@ -62,10 +80,19 @@ class AvailabilityController extends Controller
         }
 
         $isOverlap = Booking::where('room_id', $request->room_id)
-            ->whereIn('status', ['confirmed', 'pending'])
+            ->where(function ($query) {
+                $query->where('status', 'confirmed')
+                    ->orWhere(function ($q) {
+                        $q->where('status', 'pending')
+                            ->where(function ($exp) {
+                                $exp->whereNull('payment_expires_at')
+                                    ->orWhere('payment_expires_at', '>', now());
+                            });
+                    });
+            })
             ->where(function ($query) use ($request) {
                 $query->where('check_in', '<', $request->check_out)
-                      ->where('check_out', '>', $request->check_in);
+                    ->where('check_out', '>', $request->check_in);
             })
             ->exists();
 

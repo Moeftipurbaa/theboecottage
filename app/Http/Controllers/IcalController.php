@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Booking;
 use App\Models\IcalLink;
 use App\Models\Room;
@@ -153,6 +154,61 @@ class IcalController extends Controller
             'summary' => $summary,
             'message' => "OTA Sync Complete: {$summary['imported']} imported, {$summary['updated']} updated, {$summary['cancelled']} cancelled ({$summary['errors']} errors).",
         ]);
+    }
+
+    /**
+     * Localhost-only: current OTA sync status + outbound .ics feed URLs.
+     * GET /api/ical/status
+     */
+    public function quickStatus()
+    {
+        abort_unless(HandleInertiaRequests::icalTestPanelEnabled(), 404);
+
+        return response()->json($this->buildStatusPayload());
+    }
+
+    /**
+     * Localhost-only: run IcalSyncService for all active links from the public test panel.
+     * POST /api/ical/quick-sync
+     */
+    public function quickSync(IcalSyncService $syncService)
+    {
+        abort_unless(HandleInertiaRequests::icalTestPanelEnabled(), 404);
+
+        $summary = $syncService->syncAll();
+
+        return response()->json([
+            'summary' => $summary,
+            ...$this->buildStatusPayload(),
+        ]);
+    }
+
+    private function buildStatusPayload(): array
+    {
+        $links = IcalLink::with('room:id,name,slug')->orderBy('room_id')->get();
+        $lastSynced = $links->max('last_synced_at');
+
+        return [
+            'synced_at' => now()->toIso8601String(),
+            'last_synced_at' => $lastSynced?->toIso8601String(),
+            'active_links' => $links->where('is_active', true)->count(),
+            'inbound_links' => $links->map(fn (IcalLink $link) => [
+                'id' => $link->id,
+                'room' => $link->room?->name,
+                'platform' => $link->platform,
+                'is_active' => $link->is_active,
+                'last_synced_at' => $link->last_synced_at?->toIso8601String(),
+            ])->values(),
+            'export_feeds' => Room::orderBy('id')->get()->map(fn (Room $room) => [
+                'room' => $room->name,
+                'slug' => $room->slug,
+                'url' => $room->export_url,
+                'upcoming_bookings' => $room->bookings()
+                    ->whereIn('status', ['confirmed', 'pending'])
+                    ->where('check_out', '>=', now()->toDateString())
+                    ->count(),
+            ])->values(),
+        ];
     }
 }
 

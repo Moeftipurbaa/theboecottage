@@ -1,3 +1,4 @@
+import { useLanguage } from '../Contexts/LanguageContext';
 import RevealOnScroll from './RevealOnScroll';
 
 const defaultReviews = [
@@ -24,25 +25,27 @@ const defaultReviews = [
     },
 ];
 
-function formatReviewDate(dateString) {
-    if (!dateString) return 'VERIFIED STAY';
+function formatReviewDate(dateString, verifiedLabel, lang) {
+    if (!dateString) return verifiedLabel;
     const parsed = new Date(dateString);
     if (Number.isNaN(parsed.getTime())) return String(dateString);
-    return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+    const locale = lang === 'id' ? 'id-ID' : 'en-GB';
+    return parsed.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
 }
 
 export default function ReviewSection({ reviews = [] }) {
+    const { t, lang } = useLanguage();
     const items = reviews.length > 0 ? reviews : defaultReviews;
 
     return (
         <section id="testimonials" className="bg-[#1E322A] px-6 py-20 sm:py-24">
             <div className="mx-auto max-w-7xl">
                 <header className="mb-12 text-center sm:mb-16">
-                    <h2 className="font-serif text-4xl font-normal leading-tight tracking-[-0.025em] text-[#F1ECE0] sm:text-5xl">
-                        Impressions Left on Faded Paper
+                    <h2 className="font-serif text-3xl font-normal leading-tight tracking-[-0.025em] text-[#F1ECE0] sm:text-5xl">
+                        {t('reviews.title')}
                     </h2>
                     <p className="mx-auto mt-4 max-w-xl font-sans text-sm leading-relaxed text-gray-300 sm:text-base">
-                        Real stories and memories from guests who found peace in the embrace of nature
+                        {t('reviews.subtitle')}
                     </p>
                 </header>
 
@@ -51,7 +54,7 @@ export default function ReviewSection({ reviews = [] }) {
                         const rating = Number(review.rating) || 5;
                         const quote = review.comment || review.quote;
                         const guest = review.guest_name || review.guest;
-                        const dateLabel = review.date || formatReviewDate(review.created_at);
+                        const dateLabel = review.date || formatReviewDate(review.created_at, t('reviews.verified'), lang);
 
                         return (
                             <RevealOnScroll
@@ -59,7 +62,7 @@ export default function ReviewSection({ reviews = [] }) {
                                 key={review.id || `${guest}-${index}`}
                                 direction="up"
                                 delay={index * 120}
-                                className="flex h-full flex-col rounded-2xl bg-[#FAFAF8] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.12)] sm:p-7"
+                                className="flex h-full flex-col rounded-2xl bg-[#FAFAF8] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-1 sm:p-7"
                             >
                                 <div aria-label={`${rating} out of 5 stars`} className="mb-6 flex gap-1 text-2xl leading-none text-yellow-400">
                                     {[1, 2, 3, 4, 5].map((star) => (
@@ -87,7 +90,7 @@ export default function ReviewSection({ reviews = [] }) {
                         href="#testimonials"
                         className="inline-flex items-center gap-6 rounded-full border border-[#F1ECE0]/70 px-8 py-3 font-sans text-xs font-semibold tracking-[0.12em] text-[#F1ECE0] transition-colors hover:bg-[#F1ECE0] hover:text-[#1E322A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F1ECE0]"
                     >
-                        SEE ALL REVIEWS <span aria-hidden="true">→</span>
+                        {t('reviews.seeAll')} <span aria-hidden="true">→</span>
                     </a>
                 </div>
             </div>

@@ -22,8 +22,8 @@ npm install
 cp .env.example .env            # Windows CMD: copy .env.example .env
 php artisan key:generate
 
-# 3. Buat file database SQLite (jika belum ada), lalu migrasi + seed data contoh
-php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
+# 3. Buat database MySQL `theboecottage` di Laragon / phpMyAdmin, lalu migrasi + seed data contoh
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS theboecottage CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 php artisan migrate:fresh --seed
 
 # 4. Jalankan Laravel server + Vite dev server sekaligus
@@ -32,13 +32,15 @@ composer run dev
 
 Buka **http://localhost:8000**.
 
-> Tidak perlu MySQL maupun key Midtrans untuk development. Dengan `MIDTRANS_SERVER_KEY` kosong, booking tetap berhasil dan mengembalikan token `MOCK-SNAP-<kode booking>`.
+> **Catatan Database (MySQL vs SQLite):** Secara default `.env.example` dikonfigurasi ke **MySQL (`DB_DATABASE=theboecottage`, `DB_USERNAME=root`, `DB_PASSWORD=`)** agar langsung tampil di phpMyAdmin Laragon. Jika ingin memakai SQLite tanpa MySQL, cukup ubah `DB_CONNECTION=sqlite` di `.env` dan jalankan `php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"`.
+>
+> **Automated Testing Aman (`php artisan test`):** `phpunit.xml` dikonfigurasi menggunakan SQLite in-memory (`:memory:`), sehingga menjalankan `php artisan test` **tidak akan menghapus** data di database MySQL `theboecottage` Anda.
 
 Perintah lain yang berguna:
 
 | Perintah | Fungsi |
 |---|---|
-| `php artisan test` | Menjalankan seluruh test suite (24 test E2E) |
+| `php artisan test` | Menjalankan seluruh test suite (28 test E2E di in-memory SQLite) |
 | `npm run build` | Build aset produksi ke `public/build` |
 | `php artisan sync:ical` | Sinkronisasi manual feed iCal OTA |
 

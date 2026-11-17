@@ -10,7 +10,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('bookings:expire-unpaid', function () {
-    $expiredCount = Booking::where('source', 'direct')
+    $expiredByTimer = Booking::expireOverduePending();
+
+    $expiredLegacy = Booking::where('source', 'direct')
         ->where('status', 'pending')
         ->where('payment_status', 'unpaid')
         ->where('created_at', '<', now()->subHours(4))
@@ -19,8 +21,9 @@ Artisan::command('bookings:expire-unpaid', function () {
             'payment_status' => 'expired',
         ]);
 
-    $this->info("Expired {$expiredCount} unpaid pending direct booking(s).");
-})->purpose('Automatically cancel unpaid direct bookings older than 4 hours');
+    $totalExpired = $expiredByTimer + $expiredLegacy;
+    $this->info("Expired {$totalExpired} unpaid pending direct booking(s).");
+})->purpose('Automatically cancel unpaid direct bookings whose timer or 4-hour window elapsed');
 
 Schedule::command('sync:ical')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('bookings:expire-unpaid')->everyFiveMinutes()->withoutOverlapping();

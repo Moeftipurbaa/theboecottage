@@ -14,9 +14,10 @@ use Illuminate\Validation\ValidationException;
 class BookingController extends Controller
 {
     public const SERVICE_FEE = 370000;
+    public const PAYMENT_WINDOW_MINUTES = 30;
 
     /**
-     * Atomic guest booking creation + Midtrans Snap token generation.
+     * Atomic guest booking creation + 30-minute BCA / Midtrans checkout session.
      * POST /api/bookings
      */
     public function store(Request $request, MidtransService $midtransService)
@@ -31,9 +32,12 @@ class BookingController extends Controller
             'guest_email' => 'required|email|max:255',
             'guest_phone' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:2000',
+            'payment_method' => 'nullable|string|in:bca_transfer,midtrans',
         ]);
 
         return DB::transaction(function () use ($validated, $midtransService) {
+            Booking::expireOverduePending();
+
             /** @var Room $room */
             $room = Room::where('id', $validated['room_id'])->lockForUpdate()->firstOrFail();
 
@@ -44,7 +48,16 @@ class BookingController extends Controller
             }
 
             $isOverlap = Booking::where('room_id', $room->id)
-                ->whereIn('status', ['confirmed', 'pending'])
+                ->where(function ($query) {
+                    $query->where('status', 'confirmed')
+                        ->orWhere(function ($q) {
+                            $q->where('status', 'pending')
+                                ->where(function ($exp) {
+                                    $exp->whereNull('payment_expires_at')
+                                        ->orWhere('payment_expires_at', '>', now());
+                                });
+                        });
+                })
                 ->where(function ($query) use ($validated) {
                     $query->where('check_in', '<', $validated['check_out'])
                         ->where('check_out', '>', $validated['check_in']);
@@ -63,6 +76,9 @@ class BookingController extends Controller
                 $bookingCode = 'BOE-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4));
             } while (Booking::where('booking_code', $bookingCode)->exists());
 
+            $paymentMethod = $validated['payment_method'] ?? 'bca_transfer';
+            $expiresAt = now()->addMinutes(self::PAYMENT_WINDOW_MINUTES);
+
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
                 'room_id' => $room->id,
@@ -79,6 +95,9 @@ class BookingController extends Controller
                 'status' => 'pending',
                 'check_in_status' => 'pending_arrival',
                 'payment_status' => 'unpaid',
+                'payment_method' => $paymentMethod,
+                'payment_type' => $paymentMethod === 'bca_transfer' ? 'Transfer Bank BCA / Virtual Account' : 'Midtrans Snap',
+                'payment_expires_at' => $expiresAt,
             ]);
 
             $snapToken = $midtransService->createSnapToken($booking, $room, $pricing['items']);
@@ -88,13 +107,74 @@ class BookingController extends Controller
                 'booking' => $booking->fresh('room'),
                 'snap_token' => $snapToken,
                 'pricing' => $pricing,
+                'server_time' => now()->toIso8601String(),
             ], 201);
         });
     }
 
     /**
+     * Real-time polling endpoint for checkout countdown & payment status verification.
+     * GET /api/bookings/{booking:booking_code}/status
+     */
+    public function checkStatus(Booking $booking)
+    {
+        Booking::expireOverduePending();
+        $booking->refresh();
+
+        if ($booking->payment_status === 'paid' && empty($booking->receipt_number)) {
+            $booking->update([
+                'receipt_number' => Booking::generateReceiptNumber(),
+                'paid_at' => $booking->paid_at ?? now(),
+            ]);
+            $booking->refresh();
+        }
+
+        return response()->json([
+            'booking' => $booking->load('room'),
+            'server_time' => now()->toIso8601String(),
+            'is_paid' => $booking->payment_status === 'paid' && $booking->status === 'confirmed',
+            'is_expired' => $booking->status === 'cancelled' || $booking->payment_status === 'expired',
+        ]);
+    }
+
+    /**
+     * Localhost / Demo simulation endpoint for instant BCA Transfer verification.
+     * POST /api/bookings/{booking:booking_code}/simulate-pay
+     */
+    public function simulatePay(Booking $booking)
+    {
+        Booking::expireOverduePending();
+        $booking->refresh();
+
+        if ($booking->status === 'cancelled' || $booking->payment_status === 'expired') {
+            return response()->json([
+                'message' => 'Waktu pembayaran untuk reservasi ini telah habis (expired). Silakan buat reservasi baru.',
+                'booking' => $booking->load('room'),
+            ], 422);
+        }
+
+        if ($booking->payment_status !== 'paid' || $booking->status !== 'confirmed') {
+            $booking->update([
+                'status' => 'confirmed',
+                'payment_status' => 'paid',
+                'payment_method' => $booking->payment_method ?: 'bca_transfer',
+                'payment_type' => 'Transfer Bank BCA - Terverifikasi Otomatis',
+                'paid_at' => now(),
+                'receipt_number' => $booking->receipt_number ?: Booking::generateReceiptNumber(),
+            ]);
+        }
+
+        return response()->json([
+            'booking' => $booking->fresh('room'),
+            'server_time' => now()->toIso8601String(),
+            'is_paid' => true,
+            'message' => 'Pembayaran Transfer Bank BCA berhasil diverifikasi secara otomatis.',
+        ]);
+    }
+
+    /**
      * Admin manual reservation creation (Central Bookings).
-     * POST /api/admin/bookings
+     * POST /admin/bookings
      */
     public function storeManual(Request $request)
     {
@@ -115,6 +195,8 @@ class BookingController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
+            Booking::expireOverduePending();
+
             /** @var Room $room */
             $room = Room::where('id', $validated['room_id'])->lockForUpdate()->firstOrFail();
 
@@ -143,6 +225,7 @@ class BookingController extends Controller
 
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
+                'receipt_number' => $paymentStatus === 'paid' ? Booking::generateReceiptNumber() : null,
                 'room_id' => $room->id,
                 'guest_name' => $validated['guest_name'],
                 'guest_email' => $validated['guest_email'] ?? null,
@@ -157,8 +240,10 @@ class BookingController extends Controller
                 'status' => $status,
                 'check_in_status' => 'pending_arrival',
                 'payment_status' => $paymentStatus,
+                'payment_method' => 'bca_transfer',
                 'payment_type' => $validated['payment_type'] ?? 'Manual / Bank Transfer',
                 'paid_at' => $paymentStatus === 'paid' ? now() : null,
+                'payment_expires_at' => $paymentStatus === 'paid' ? null : now()->addMinutes(self::PAYMENT_WINDOW_MINUTES),
             ]);
 
             return response()->json([
@@ -170,7 +255,7 @@ class BookingController extends Controller
 
     /**
      * Update booking check-in or reservation status from Admin Dashboard / Central Bookings.
-     * PATCH /api/admin/bookings/{booking}
+     * PATCH /admin/bookings/{booking}
      */
     public function updateStatus(Request $request, Booking $booking)
     {
@@ -180,8 +265,13 @@ class BookingController extends Controller
             'payment_status' => 'nullable|in:unpaid,pending,paid,expired,failed',
         ]);
 
-        if (isset($validated['payment_status']) && $validated['payment_status'] === 'paid' && !$booking->paid_at) {
-            $validated['paid_at'] = now();
+        if (isset($validated['payment_status']) && $validated['payment_status'] === 'paid') {
+            if (!$booking->paid_at) {
+                $validated['paid_at'] = now();
+            }
+            if (!$booking->receipt_number) {
+                $validated['receipt_number'] = Booking::generateReceiptNumber();
+            }
         }
 
         $booking->update(array_filter($validated, fn ($val) => !is_null($val)));
@@ -189,6 +279,174 @@ class BookingController extends Controller
         return response()->json([
             'booking' => $booking->fresh('room'),
             'message' => 'Booking updated successfully.',
+        ]);
+    }
+
+    /**
+     * Full Admin Edit (Update guest details, room assignment, dates with conflict check & price recalculation,
+     * payment status, and stay status).
+     * PUT /admin/bookings/{booking}
+     */
+    public function update(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'guest_name' => 'required|string|max:255',
+            'guest_email' => 'nullable|email|max:255',
+            'guest_phone' => 'nullable|string|max:50',
+            'check_in' => 'required|date',
+            'check_out' => 'required|date|after:check_in',
+            'adults' => 'nullable|integer|min:1|max:20',
+            'children' => 'nullable|integer|min:0|max:15',
+            'guests_count' => 'nullable|integer|min:1|max:20',
+            'notes' => 'nullable|string|max:2000',
+            'source' => 'nullable|in:direct,airbnb,tiket_com,booking_com,agoda,whatsapp,manual',
+            'status' => 'nullable|in:pending,confirmed,checked_in,completed,cancelled',
+            'check_in_status' => 'nullable|in:pending_arrival,checked_in,checked_out',
+            'payment_status' => 'nullable|in:unpaid,pending,paid,expired,failed,refunded',
+        ]);
+
+        return DB::transaction(function () use ($validated, $booking) {
+            Booking::expireOverduePending();
+
+            /** @var Room $room */
+            $room = Room::where('id', $validated['room_id'])->lockForUpdate()->firstOrFail();
+
+            // Map unified e-commerce stay status to DB status + check_in_status columns
+            $requestedStatus = $validated['status'] ?? $booking->status;
+            $dbStatus = $booking->status;
+            $dbCheckInStatus = $validated['check_in_status'] ?? $booking->check_in_status;
+
+            if ($requestedStatus === 'checked_in') {
+                $dbStatus = 'confirmed';
+                $dbCheckInStatus = 'checked_in';
+            } elseif ($requestedStatus === 'completed') {
+                $dbStatus = 'confirmed';
+                $dbCheckInStatus = 'checked_out';
+            } elseif ($requestedStatus === 'confirmed') {
+                $dbStatus = 'confirmed';
+                if (!isset($validated['check_in_status']) && $dbCheckInStatus !== 'checked_in') {
+                    $dbCheckInStatus = 'pending_arrival';
+                }
+            } elseif ($requestedStatus === 'pending') {
+                $dbStatus = 'pending';
+                $dbCheckInStatus = 'pending_arrival';
+            } elseif ($requestedStatus === 'cancelled') {
+                $dbStatus = 'cancelled';
+            }
+
+            // Map payment_status (support 'refunded' cleanly on SQLite)
+            $requestedPayment = $validated['payment_status'] ?? $booking->payment_status;
+            $paymentType = $booking->payment_type;
+            if ($requestedPayment === 'refunded') {
+                $dbPaymentStatus = 'expired';
+                $paymentType = 'Refunded';
+            } else {
+                $dbPaymentStatus = $requestedPayment;
+                if ($paymentType === 'Refunded' && $dbPaymentStatus === 'paid') {
+                    $paymentType = 'Transfer Bank BCA - Terverifikasi Otomatis';
+                }
+            }
+
+            // Check date conflicts excluding current booking if booking is active
+            if ($dbStatus !== 'cancelled') {
+                $isOverlap = Booking::where('room_id', $room->id)
+                    ->where('id', '!=', $booking->id)
+                    ->where(function ($query) {
+                        $query->where('status', 'confirmed')
+                            ->orWhere(function ($q) {
+                                $q->where('status', 'pending')
+                                    ->where(function ($exp) {
+                                        $exp->whereNull('payment_expires_at')
+                                            ->orWhere('payment_expires_at', '>', now());
+                                    });
+                            });
+                    })
+                    ->where(function ($query) use ($validated) {
+                        $query->where('check_in', '<', $validated['check_out'])
+                            ->where('check_out', '>', $validated['check_in']);
+                    })
+                    ->exists();
+
+                if ($isOverlap) {
+                    throw ValidationException::withMessages([
+                        'check_in' => ['Tanggal yang dipilih bentrok dengan reservasi lain yang aktif di kamar ini.'],
+                    ]);
+                }
+            }
+
+            // Server-side price recalculation
+            $pricing = $this->calculateStayPrice($room, $validated['check_in'], $validated['check_out'], true);
+
+            $adults = $validated['adults'] ?? $validated['guests_count'] ?? $booking->adults ?? 2;
+            $children = $validated['children'] ?? (isset($validated['guests_count']) && !isset($validated['adults']) ? 0 : ($booking->children ?? 0));
+
+            $paidAt = $booking->paid_at;
+            $receiptNumber = $booking->receipt_number;
+
+            if ($dbPaymentStatus === 'paid') {
+                $paidAt = $paidAt ?: now();
+                $receiptNumber = $receiptNumber ?: Booking::generateReceiptNumber();
+                if (!$paymentType || $paymentType === 'Awaiting Payment') {
+                    $paymentType = 'Transfer Bank BCA - Terverifikasi Otomatis';
+                }
+            }
+
+            $booking->update([
+                'room_id' => $room->id,
+                'guest_name' => $validated['guest_name'],
+                'guest_email' => $validated['guest_email'] ?? null,
+                'guest_phone' => $validated['guest_phone'] ?? null,
+                'check_in' => $validated['check_in'],
+                'check_out' => $validated['check_out'],
+                'adults' => $adults,
+                'children' => $children,
+                'notes' => $validated['notes'] ?? null,
+                'source' => $validated['source'] ?? $booking->source,
+                'total_price' => $pricing['total'],
+                'status' => $dbStatus,
+                'check_in_status' => $dbCheckInStatus,
+                'payment_status' => $dbPaymentStatus,
+                'payment_type' => $paymentType,
+                'paid_at' => $paidAt,
+                'receipt_number' => $receiptNumber,
+            ]);
+
+            return response()->json([
+                'booking' => $booking->fresh('room'),
+                'pricing' => $pricing,
+                'message' => 'Reservasi berhasil diperbarui.',
+            ]);
+        });
+    }
+
+    /**
+     * Permanently delete a reservation from Central Bookings.
+     * DELETE /admin/bookings/{booking}
+     */
+    public function destroy(Booking $booking)
+    {
+        $code = $booking->booking_code;
+        $booking->delete();
+
+        return response()->json([
+            'deleted_code' => $code,
+            'message' => "Reservasi #{$code} berhasil dihapus permanen.",
+        ]);
+    }
+
+    /**
+     * Automatically expire all overdue pending bookings and return updated list.
+     * POST /admin/bookings/expire-overdue
+     */
+    public function expireOverdue()
+    {
+        $expiredCount = Booking::expireOverduePending();
+
+        return response()->json([
+            'expired_count' => $expiredCount,
+            'bookings' => Booking::with('room')->latest()->get(),
+            'server_time' => now()->toIso8601String(),
         ]);
     }
 
@@ -224,11 +482,13 @@ class BookingController extends Controller
                 $updates['payment_status'] = 'paid';
                 $updates['status'] = 'confirmed';
                 $updates['paid_at'] = now();
+                $updates['receipt_number'] = $booking->receipt_number ?: Booking::generateReceiptNumber();
             }
         } elseif ($transactionStatus === 'settlement') {
             $updates['payment_status'] = 'paid';
             $updates['status'] = 'confirmed';
             $updates['paid_at'] = now();
+            $updates['receipt_number'] = $booking->receipt_number ?: Booking::generateReceiptNumber();
         } elseif ($transactionStatus === 'pending') {
             $updates['payment_status'] = 'pending';
             $updates['status'] = 'pending';
@@ -242,6 +502,7 @@ class BookingController extends Controller
         return response()->json([
             'message' => 'Webhook processed',
             'booking_code' => $booking->booking_code,
+            'receipt_number' => $booking->receipt_number,
             'status' => $booking->status,
             'payment_status' => $booking->payment_status,
         ]);
@@ -326,4 +587,3 @@ class BookingController extends Controller
         ];
     }
 }
-
