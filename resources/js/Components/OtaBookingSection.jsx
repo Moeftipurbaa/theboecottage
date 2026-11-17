@@ -225,26 +225,20 @@ export default function OtaBookingSection({ rooms = [], compact = false }) {
                                     href={card.airbnbUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex min-h-11 w-full items-center justify-between rounded-xl bg-[#FF385C] px-4 py-2.5 font-sans text-xs font-bold tracking-[0.04em] text-white shadow-xs transition-all duration-200 hover:bg-[#E00B41] hover:shadow-md"
+                                    className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-xl bg-[#FF385C] px-4 py-2.5 text-center font-sans text-xs font-bold tracking-[0.04em] text-white shadow-xs transition-all duration-200 hover:bg-[#E00B41] hover:shadow-md"
                                 >
-                                    <span className="inline-flex items-center gap-2">
-                                        <AirbnbIcon />
-                                        {t('ota.bookAirbnb')}
-                                    </span>
-                                    <span aria-hidden="true" className="text-sm">↗</span>
+                                    <AirbnbIcon />
+                                    <span>{t('ota.bookAirbnb')}</span>
                                 </a>
 
                                 <a
                                     href={card.tiketUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex min-h-11 w-full items-center justify-between rounded-xl bg-[#0064D2] px-4 py-2.5 font-sans text-xs font-bold tracking-[0.04em] text-white shadow-xs transition-all duration-200 hover:bg-[#004FA6] hover:shadow-md"
+                                    className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-xl bg-[#0064D2] px-4 py-2.5 text-center font-sans text-xs font-bold tracking-[0.04em] text-white shadow-xs transition-all duration-200 hover:bg-[#004FA6] hover:shadow-md"
                                 >
-                                    <span className="inline-flex items-center gap-2">
-                                        <TiketIcon />
-                                        {t('ota.bookTiket')}
-                                    </span>
-                                    <span aria-hidden="true" className="text-sm">↗</span>
+                                    <TiketIcon />
+                                    <span>{t('ota.bookTiket')}</span>
                                 </a>
 
                                 <Link

@@ -157,11 +157,20 @@ export default function Footer() {
                                         onClick={() => setReviewForm((current) => ({ ...current, rating: value }))}
                                         aria-label={`${value} ${t('footer.star')}`}
                                         aria-pressed={reviewForm.rating === value}
-                                        className={`text-2xl leading-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#346B55] ${
+                                        className={`p-0.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#346B55] ${
                                             reviewForm.rating >= value ? 'text-[#AE8A66]' : 'text-[#35423A]'
                                         }`}
                                     >
-                                        {reviewForm.rating >= value ? '★' : '☆'}
+                                        <svg
+                                            aria-hidden="true"
+                                            viewBox="0 0 24 24"
+                                            fill={reviewForm.rating >= value ? 'currentColor' : 'none'}
+                                            stroke="currentColor"
+                                            strokeWidth="1.6"
+                                            className="h-5 w-5"
+                                        >
+                                            <path d="m12 3.5 2.7 5.47 6.04.88-4.37 4.26 1.03 6.02L12 17.29l-5.4 2.84 1.03-6.02-4.37-4.26 6.04-.88L12 3.5Z" />
+                                        </svg>
                                     </button>
                                 ))}
                             </div>

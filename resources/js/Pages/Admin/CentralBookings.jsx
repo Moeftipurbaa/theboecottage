@@ -355,7 +355,7 @@ function AdminSidebar({ onLogout, userName }) {
     return (
         <aside className="print:hidden fixed inset-y-0 left-0 z-40 hidden w-[200px] flex-col border-r border-[#E7E4DC] bg-[#F3F1EB] px-4 py-5 md:flex">
             <a href="/" className="mb-9 flex items-start gap-2.5 px-1 text-[#1E322A] no-underline">
-                <span aria-hidden="true" className="mt-1 text-sm text-[#AE8A66]">✦</span>
+                <span aria-hidden="true" className="mt-1.5 h-2 w-2 rotate-45 bg-[#AE8A66]" />
                 <span>
                     <span className="block font-serif text-[17px] leading-5">The Boe Cottage</span>
                     <span className="mt-1 block font-sans text-[8px] font-semibold tracking-[0.18em] text-[#747873]">STAFF LEDGER</span>
@@ -1319,12 +1319,11 @@ export default function CentralBookings({ bookings: initialBookings = [], rooms 
                                                                 <span
                                                                     className={`inline-flex items-center rounded-md px-2 py-1 text-[9px] font-bold leading-tight ${reservation.paymentStyle}`}
                                                                 >
-                                                                    {reservation.paymentKey === 'paid' ? '✓ ' : '• '}
                                                                     {reservation.payment}
                                                                 </span>
                                                                 {secondsLeft !== null && (
                                                                     <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-900">
-                                                                        ⏱ {formatCountdown(secondsLeft)}
+                                                                        {formatCountdown(secondsLeft)}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -1472,11 +1471,11 @@ export default function CentralBookings({ bookings: initialBookings = [], rooms 
                                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#F6F3EE] px-4 py-3">
                                     {detailReservation.paymentKey === 'paid' ? (
                                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#346B55] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                                            ✓ {copy.detailModal.receiptReady}
+                                            {copy.detailModal.receiptReady}
                                         </span>
                                     ) : detailReservation.category === 'unpaid' && detailReservation.paymentExpiresAt ? (
                                         <span className="inline-flex items-center gap-2 rounded-full bg-amber-200 px-3 py-1 font-mono text-xs font-bold text-amber-900">
-                                            ⏱ {copy.detailModal.unpaidTimer}:{' '}
+                                            {copy.detailModal.unpaidTimer}:{' '}
                                             {formatCountdown(
                                                 Math.max(
                                                     0,
@@ -1573,7 +1572,7 @@ export default function CentralBookings({ bookings: initialBookings = [], rooms 
                                             onClick={() => handleQuickMarkPaid(detailReservation)}
                                             className="inline-flex h-10 items-center justify-center rounded-lg bg-[#346B55] px-4 text-[10px] font-bold uppercase tracking-[0.08em] text-white hover:bg-[#1E322A] disabled:opacity-60"
                                         >
-                                            ✓ {copy.detailModal.markPaidQuick}
+                                            {copy.detailModal.markPaidQuick}
                                         </button>
                                     )}
 

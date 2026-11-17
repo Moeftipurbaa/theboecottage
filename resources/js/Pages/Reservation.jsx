@@ -384,7 +384,7 @@ function CheckoutAndReceiptPanel({
                             <dt className="font-medium text-[#777B75]">{t('reservation.receipt.paymentStatus')}</dt>
                             <dd>
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#DCE9DF] px-3 py-0.5 font-sans text-[10px] font-bold uppercase tracking-[0.08em] text-[#1E322A]">
-                                    ✓ {t('reservation.receipt.paidStatusBadge')}
+                                    {t('reservation.receipt.paidStatusBadge')}
                                 </span>
                             </dd>
                         </div>
@@ -423,7 +423,7 @@ function CheckoutAndReceiptPanel({
                             rel="noopener noreferrer"
                             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#346B55] bg-[#DCE9DF]/60 px-5 py-3 text-center font-sans text-xs font-bold uppercase tracking-[0.06em] text-[#1E322A] transition-colors hover:bg-[#346B55] hover:text-white"
                         >
-                            {t('reservation.receipt.whatsappRescheduleBtn')} ↗
+                            {t('reservation.receipt.whatsappRescheduleBtn')}
                         </a>
 
                         <button
@@ -639,7 +639,7 @@ function CheckoutAndReceiptPanel({
                             rel="noopener noreferrer"
                             className="font-sans text-[11px] font-semibold text-[#346B55] underline underline-offset-4 hover:text-[#1E322A]"
                         >
-                            {t('reservation.askWhatsapp')} ↗
+                            {t('reservation.askWhatsapp')}
                         </a>
                         <button
                             type="button"

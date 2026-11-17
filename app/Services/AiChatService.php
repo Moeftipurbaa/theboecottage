@@ -317,7 +317,7 @@ PROMPT;
             str_contains($normalized, 'paket makan')
         ) {
             return "The Boe Cottage menyediakan paket santap hangat yang sangat cocok untuk dinikmati di tengah udara sejuk Dieng:\n\n".
-                "🔥 **Paket BBQ (Rp 390.000):**\n".
+                "**Paket BBQ (Rp 390.000):**\n".
                 "• Baso Ikan (5 tusuk)\n".
                 "• Baso Salmon (5 tusuk)\n".
                 "• Sosis (5 biji)\n".
@@ -325,7 +325,7 @@ PROMPT;
                 "• Sate Ayam (10 tusuk)\n".
                 "• Nasi putih\n".
                 "• Arang / Gas & Peralatan BBQ lengkap\n\n".
-                "🍲 **Paket Steamboat (Rp 275.000):**\n".
+                "**Paket Steamboat (Rp 275.000):**\n".
                 "• Slice Beef (250 gr) & Slice Chicken (250 gr)\n".
                 "• Baso Ikan (6 biji) & Baso Salmon (6 biji)\n".
                 "• Dumpling, Odeng, Jamur, Sawi, Tahu, Jagung\n".
@@ -414,8 +414,8 @@ PROMPT;
             str_contains($normalized, 'suasana')
         ) {
             return "**Lokasi & Suasana The Boe Cottage:**\n\n".
-                "📍 **Alamat:** Desa Sumberejo, Kecamatan Batur, Kabupaten Banjarnegara, Jawa Tengah.\n".
-                "🗺️ **Google Maps:** [Buka Google Maps](https://maps.app.goo.gl/928tTkkNCtnNvZ5Q9)\n\n".
+                "**Alamat:** Desa Sumberejo, Kecamatan Batur, Kabupaten Banjarnegara, Jawa Tengah.\n".
+                "**Google Maps:** [Buka Google Maps](https://maps.app.goo.gl/928tTkkNCtnNvZ5Q9)\n\n".
                 'Berada di kawasan dataran tinggi Dieng yang sejuk dan menenangkan, dikelilingi pemandangan perbukitan, hamparan perkebunan asri, serta udara segar khas pegunungan yang sangat menyegarkan pikiran.';
         }
 
@@ -457,7 +457,7 @@ PROMPT;
                 "• **Tanggal Check-out :**\n".
                 "• **Jumlah Tamu :**\n".
                 "• **Pilihan Kamar :** Daisy Room / Lily Room / Belum Menentukan\n\n".
-                '📲 [Kirim ke WhatsApp Admin (0821 4441 271)](https://wa.me/628214441271?text=Halo%20The%20Boe%20Cottage,%20saya%20ingin%20cek%20ketersediaan%20kamar)';
+                '[Kirim ke WhatsApp Admin (0821 4441 271)](https://wa.me/628214441271?text=Halo%20The%20Boe%20Cottage,%20saya%20ingin%20cek%20ketersediaan%20kamar)';
         }
 
         // 12. Contact Admin / WhatsApp
@@ -501,7 +501,7 @@ PROMPT;
             str_contains($normalized, 'boe cottage') ||
             str_contains($normalized, 'the boe')
         ) {
-            return "Salam hangat dari The Boe Cottage! ✨\n\n".
+            return "Salam hangat dari The Boe Cottage.\n\n".
                 "The Boe Cottage merupakan villa di kawasan dataran tinggi Dieng, Jawa Tengah, yang menghadirkan suasana menginap hangat, nyaman, dan elegan berpadu dengan keindahan alam pegunungan.\n\n".
                 "Kami memiliki 4 unit villa dengan dua tipe pilihan mezzanine:\n".
                 "• **Daisy Room** (Rp 3.000.000/malam)\n".
@@ -510,7 +510,7 @@ PROMPT;
         }
 
         // 15. Default Fallback
-        return "Salam hangat dari **The Boe Cottage Dieng**! 🌿\n\n".
+        return "Salam hangat dari **The Boe Cottage Dieng**.\n\n".
             "Kami siap membantu Anda merencanakan waktu liburan terbaik di dataran tinggi Dieng. Anda dapat menanyakan tentang:\n\n".
             "• **Perbedaan Daisy & Lily Room**\n".
             "• **Tarif & Ketentuan DP / Pembayaran**\n".

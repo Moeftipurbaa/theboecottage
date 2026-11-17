@@ -64,9 +64,19 @@ export default function ReviewSection({ reviews = [] }) {
                                 delay={index * 120}
                                 className="flex h-full flex-col rounded-2xl bg-[#FAFAF8] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-1 sm:p-7"
                             >
-                                <div aria-label={`${rating} out of 5 stars`} className="mb-6 flex gap-1 text-2xl leading-none text-yellow-400">
+                                <div aria-label={`${rating} out of 5 stars`} className="mb-6 flex gap-1 text-[#AE8A66]">
                                     {[1, 2, 3, 4, 5].map((star) => (
-                                        <span key={star} aria-hidden="true">{star <= rating ? '★' : '☆'}</span>
+                                        <svg
+                                            key={star}
+                                            aria-hidden="true"
+                                            viewBox="0 0 24 24"
+                                            fill={star <= rating ? 'currentColor' : 'none'}
+                                            stroke="currentColor"
+                                            strokeWidth="1.6"
+                                            className="h-5 w-5"
+                                        >
+                                            <path d="m12 3.5 2.7 5.47 6.04.88-4.37 4.26 1.03 6.02L12 17.29l-5.4 2.84 1.03-6.02-4.37-4.26 6.04-.88L12 3.5Z" />
+                                        </svg>
                                     ))}
                                 </div>
 

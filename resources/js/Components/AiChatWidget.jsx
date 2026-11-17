@@ -17,7 +17,7 @@ const SUGGESTION_CHIPS = [
 
 const INITIAL_BOT_MESSAGE = {
     sender: 'bot',
-    text: 'Salam hangat dari **The Boe Cottage Dieng**! 🌿\n\nSaya adalah asisten virtual AI Anda yang siap melayani 24/7. Anda dapat menanyakan tentang detail kamar (**Daisy** & **Lily**), tarif, fasilitas lengkap, paket BBQ & Steamboat, sarapan, maupun rekomendasi tempat wisata di Dieng.\n\nSilakan pilih topik di bawah atau ketik pertanyaan Anda langsung!',
+    text: 'Salam hangat dari **The Boe Cottage Dieng**.\n\nSaya adalah asisten virtual AI Anda yang siap melayani 24/7. Anda dapat menanyakan tentang detail kamar (**Daisy** & **Lily**), tarif, fasilitas lengkap, paket BBQ & Steamboat, sarapan, maupun rekomendasi tempat wisata di Dieng.\n\nSilakan pilih topik di bawah atau ketik pertanyaan Anda langsung!',
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 };
 
