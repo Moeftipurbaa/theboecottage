@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import AiChatWidget from '../Components/AiChatWidget';
 
 const fallbackRoomOptions = [
     {
@@ -663,6 +664,7 @@ export default function Reservation({ rooms: backendRooms = [], seasonalRates = 
                     <a href="mailto:theboecottage@gmail.com" className="font-sans text-[9px] text-white/70 hover:text-white">Contact us</a>
                 </footer>
             </div>
+            <AiChatWidget />
         </>
     );
 }

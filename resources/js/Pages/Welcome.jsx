@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AboutSection from '../Components/AboutSection';
+import AiChatWidget from '../Components/AiChatWidget';
 import Footer from '../Components/Footer';
 import LoginModal from '../Components/LoginModal';
 import LocationSection from '../Components/LocationSection';
@@ -241,6 +242,7 @@ export default function Welcome({ rooms = [], reviews = [] }) {
                 <Footer />
             </div>
             <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+            <AiChatWidget />
         </>
     );
 }
